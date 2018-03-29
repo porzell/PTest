@@ -1,7 +1,3 @@
-// testProject.cpp : Defines the entry point for the console application.
-//
-
-#define USE_PTEST_MAIN
 #include "../include/ptest.hpp"
 
 #include <vector>
@@ -61,4 +57,9 @@ P_TEST(TestExpect) {
 	P_ASSERT(i == 0);
 
 	P_ASSERT(i == 1);
+}
+
+int main() {
+	// Returns a count of failed tests.
+	return PTest::PTestRegistry::Get().RunAllTests();
 }

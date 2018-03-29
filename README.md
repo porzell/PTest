@@ -23,22 +23,21 @@ any expression that would work in an if statement will work inside an assertion.
 Here's how simple an example test file can be!
 
 ```C++
+#define USE_PTEST_MAIN
 #include "../include/ptest.hpp"
 #include <string>
 
 P_TEST(MyFirstTest) {
-    std::string testString;
-    
-    testString += "hello";
-    testString += ' ';
-    testString += "world!";
-    
-    P_ASSERT(testString == "hello world!");
-    P_ASSERT(testString == "goodbye world!");
-}
+	std::string testString;
 
-int main() {
-    return PTest::PTestRegistry::Get().RunAllTests();
+	testString += "hello";
+	testString += ' ';
+	testString += "world!";
+
+	P_ASSERT(testString == "hello world!");
+	P_EXPECT(testString == "goodbye world!");
+	
+	P_ASSERT(2 + 2 != 4);
 }
 ```
 
@@ -52,17 +51,23 @@ Found test MyFirstTest...
 [Running] MyFirstTest:
 
 ============================================
-Assertion Failure in my_first_test.cpp (Line 14)
+Expectation Failure in testproject.cpp (Line 14)
      Condition not met:
-        (0 == 1)
+        (testString == "goodbye world!")
 
- Test 'MyFirstTest' finished. (0.601486 ms)
-   1 assertions failed.
+
+============================================
+Assertion Failure in testproject.cpp (Line 16)
+     Condition not met:
+        (2 + 2 != 4)
+
+ Test 'MyFirstTest' finished. (0.497651 ms)
+   2 assertions failed.
    3 assertions run.
 ============================================
 
 ==================================================================
-[Test Summary]:                 (Total Time: 0.601486 ms)
+[Test Summary]:                 (Total Time: 0.497651 ms)
         Tests Passed:   0
         Tests Failed:   1
         Total Tests:    1
@@ -75,8 +80,8 @@ Nice, huh?
 
 ### Test Fixtures
 
-PTest can also provide a main function to run through all tests and also supports
-the use of test fixture classes like this:
+PTest also lets you provide your own main function to run through tests and also
+supports the use of test fixture classes like this:
 
 ```C++
 #define USE_PTEST_MAIN
@@ -101,6 +106,10 @@ P_TEST_F(MyTestFixtureClass, UnitTest1) {
 P_TEST_F(MyTestFixtureClass, UnitTest2) {
     P_ASSERT(myVar == 3);
     myVar = 4;
+}
+
+int main() {
+    return PTest::PTestRegistry::Get().RunAllTests();
 }
 ```
 
