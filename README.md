@@ -10,7 +10,7 @@ compiling and linking a separate testing library (like gtest).
 PicoTest is absolutely tiny at ~340 LoC, but still can get the job done.
 
 ## So, how do I use this thing?
-Easy!  First off you gotta make a test case.  That'll look like this:
+Easy!  First off you've got to make a test case.  That'll look like this:
 ```C++
 P_TEST(MyTestName) {
     ...
@@ -76,7 +76,7 @@ Nice, huh?
 ### Test Fixtures
 
 PTest can also provide a main function to run through all tests and also supports
-test fixture classes like this:
+the use of test fixture classes like this:
 
 ```C++
 #define USE_PTEST_MAIN
@@ -105,7 +105,7 @@ P_TEST_F(MyTestFixtureClass, UnitTest2) {
 ```
 
 
-PTest will automatically gather all ```P_TEST()``` and ```P_TEST_F``` tests to
+PTest will automatically gather all ```P_TEST()``` and ```P_TEST_F()``` tests to
 run, so you don't need to worry about it.
 
 If you would like to run just one test you can also use:
@@ -119,10 +119,10 @@ Currently, the planned list of PTest features to be supported includes:
  This will allow you to add a custom text output to display on an assertion failure.
 * Gherkin-like test syntax:
  Oh yeah, that's right!  PTest will soon be supporting a Gherkin-like block syntax to allow you to bring Test-driven development to your project in one tiny header.
-* Test tags/filters
+* Test tags/filters:
  For when you're really rather choosy about your tests...
 * Exception catch assertions:
- This will be pretty easy to add and likely will be coming up soon.
+ This will be pretty easy to add in and likely will be coming very soon.
 
 ## License
 PicoTest is licensed under the MIT License, so it's easy to integrate into any project, big or small.
