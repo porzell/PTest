@@ -13,10 +13,10 @@
 
 #define P_ASSERT(assertion) \
     PTest::PTestRegistry::Get().AddAssertion(PTest::PAssertion((assertion), __FILE__, __LINE__, #assertion)); \
-    if (!assertion) return;
+    if (!#assertion) return;
 
 #define P_EXPECT(assertion) \
-    PTest::PTestRegistry::Get().AddAssertion(PTest::PAssertion((assertion), __FILE__, __LINE__, #assertion), true);
+    PTest::PTestRegistry::Get().AddAssertion(PTest::PAssertion((#assertion), __FILE__, __LINE__, #assertion), true);
 
 #define STRINGIFY(x) #x
 
@@ -166,8 +166,8 @@ namespace PTest {
 
 			SetConsoleColor(PColor::Blue); printf(" Test '%s' finished. (%f ms)\n", name_.c_str(), duration_.count());
 			succeeded_ ? SetConsoleColor(PColor::Green) : SetConsoleColor(PColor::Red);
-			printf("   %u assertions failed.\n", failedAssertionCount);
-			SetConsoleColor(PColor::Green); printf("   %u assertions run.\n", assertions_.size());
+			printf("   %zu assertions failed.\n", failedAssertionCount);
+			SetConsoleColor(PColor::Green); printf("   %zu assertions run.\n", assertions_.size());
 
 			if (!succeeded_) {
 				SetConsoleColor(PColor::Red);
@@ -252,12 +252,12 @@ namespace PTest {
 			SetConsoleColor(PColor::Normal); PrintBars(3); printf("[Test Summary]:");
 			SetConsoleColor(PColor::Blue); printf("\t\t\t(Total Time: %f ms)\n", totalDuration.count());
 			SetConsoleColor(PColor::Green); printf("\tTests Passed:\t");
-			SetConsoleColor(PColor::Normal); printf("%u\n", testsRunCount - testsFailedCount);
+			SetConsoleColor(PColor::Normal); printf("%zu\n", testsRunCount - testsFailedCount);
 			testsFailedCount ? SetConsoleColor(PColor::Red) : SetConsoleColor(PColor::Green);
 			printf("\tTests Failed:\t");
-			SetConsoleColor(PColor::Normal); printf("%u\n", testsFailedCount);
+			SetConsoleColor(PColor::Normal); printf("%zu\n", testsFailedCount);
 			SetConsoleColor(PColor::Blue); printf("\tTotal Tests:\t");
-			SetConsoleColor(PColor::Normal); printf("%u\n", testsRunCount); PrintBars(3);
+			SetConsoleColor(PColor::Normal); printf("%zu\n", testsRunCount); PrintBars(3);
 
 			return testsFailedCount;
 		}
