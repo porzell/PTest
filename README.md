@@ -7,7 +7,7 @@ Glad you asked!  PTest is short for PicoTest.
 PTest allows you to quickly add unit tests to your project without the need for
 compiling and linking a separate testing library (like gtest).
 
-At ~230 LOC, PicoTest is absolutely tiny, but still can get the job done.
+PicoTest is absolutely tiny at ~340 LoC, but still can get the job done.
 
 ## So, how do I use this thing?
 Easy!  First off you gotta make a test case.  That'll look like this:
@@ -78,7 +78,7 @@ Nice, huh?
 PTest can also provide a main function to run through all tests and also supports
 test fixture classes like this:
 
-```
+```C++
 #define USE_PTEST_MAIN
 #include "../include/ptest.hpp"
 
