@@ -20,7 +20,7 @@
 	}
 
 #define P_EXPECT(assertion) \
-    PTest::PTestRegistry::Get().AddAssertion(PTest::PAssertion((#assertion), __FILE__, __LINE__, #assertion), true);
+    PTest::PTestRegistry::Get().AddAssertion(PTest::PAssertion(!(#assertion), __FILE__, __LINE__, #assertion), true);
 
 #define STRINGIFY(x) #x
 
@@ -256,7 +256,12 @@ namespace PTest {
 		}
 
 		void AddTest(PTest&& ptest) {
-			auto &name = ptest.GetName();
+			std::string name;
+			if (ptest.HasFixture()) {
+				name = ptest.GetFixtureName() + "." + ptest.GetName();
+			} else {
+				name = ptest.GetName();
+			}
 
 			if (testMap_.find(name) != testMap_.end()) {
 				SetConsoleColor(PColor::Red);

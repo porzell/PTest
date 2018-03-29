@@ -1,4 +1,4 @@
-#define USE_PTEST_MAIN
+//#define USE_PTEST_MAIN
 #include "../include/ptest.hpp"
 #include <cstdio>
 #include <string.h>
@@ -35,4 +35,11 @@ P_TEST_F(MyTestFixture, FailTest) {
     
     // Since the assert above fails, this value will not be set.
     myVar = 13;
+}
+
+int main() {
+    // Pick an individual test to run.
+    bool success = PTest::PTestRegistry::Get().RunTest("MyTestFixture.FailTest");
+    // Or run them all!
+    return PTest::PTestRegistry::Get().RunAllTests();
 }
