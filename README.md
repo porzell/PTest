@@ -1,9 +1,13 @@
 # PTest
 ## What is PTest?
-Glad you asked!  PTest is a header-only, super-lightweight unit testing library.
+Glad you asked!
+
+### PTest is a header-only, super-lightweight unit testing library.
 
 PTest allows you to quickly add unit tests to your project without the need for
 compiling and linking a separate testing library (like gtest).
+
+At ~230 LOC, PTest is absolutely tiny, but still can get the job done.
 
 ## So, how do I use this thing?
 Easy!  First off you gotta make a test case.  That'll look like this:
@@ -71,26 +75,22 @@ need to worry about it.
 
 If you would like to run just one test you can also use:
 ```C++
-return PTest::PTestRegistry::Get().RunTests("MyFirstTest");
+return PTest::PTestRegistry::Get().RunTest("MyFirstTest");
 ```
 
 ## Planned Features
 Currently, here is the planned list of PTest features to be supported:
 * Descriptive assertions:
-⋅⋅⋅This will allow you to  add a custom strying to display on an assertion failure
+ This will allow you to add a custom text output to display on an assertion failure.
 * Gherkin-like test syntax:
-⋅⋅⋅Oh yeah, that's right!  PTest will soon be supporting a Gherkin-like block
-...syntax to allow you to bring Test-driven development to your project in one
-...tiny header.
+ Oh yeah, that's right!  PTest will soon be supporting a Gherkin-like block syntax to allow you to bring Test-driven development to your project in one tiny header.
 * Expect(ations):
-...For when you want your test to keep going, but want to make sure it fails in
-...the end.
+ For when you want your test to keep going, but want to make sure it fails in the end.
 * Test tags/filters
-...For when you're really rather choosy about your tests...
+ For when you're really rather choosy about your tests...
 
 ## License
-PTest is licensed under the MIT License, so it's easy to integrate into any
-project, big or small.
+PTest is licensed under the MIT License, so it's easy to integrate into any project, big or small.
 
 ```
 MIT License
@@ -115,6 +115,11 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Known Issues
+Due to the (really stupid) way in which ```std::unordered_map``` currently works
+under Linux, the tests get executed in the opposite order in which they were defined.
+I will be fixing this as soon as possible.
 
 ## Have fun!
 Let me know if you end up using this!  I'll be working on it regularly.
