@@ -9,7 +9,8 @@ P_TEST(MyFirstTest) {
     testString += "world!";
     
     P_ASSERT(testString == "hello world!");
-    P_ASSERT(testString == "goodbye world!");
+    P_EXPECT(testString == "goodbye world!");
+    P_ASSERT(0 == 1);
 }
 
 int main() {

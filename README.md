@@ -1,13 +1,13 @@
 # PTest
 ## What is PTest?
-Glad you asked!
+Glad you asked!  PTest is short for PicoTest.
 
-### PTest is a header-only, super-lightweight unit testing library.
+### PicoTest is a header-only, super-lightweight unit testing library.
 
 PTest allows you to quickly add unit tests to your project without the need for
 compiling and linking a separate testing library (like gtest).
 
-At ~230 LOC, PTest is absolutely tiny, but still can get the job done.
+At ~230 LOC, PicoTest is absolutely tiny, but still can get the job done.
 
 ## So, how do I use this thing?
 Easy!  First off you gotta make a test case.  That'll look like this:
@@ -90,7 +90,7 @@ Currently, here is the planned list of PTest features to be supported:
  For when you're really rather choosy about your tests...
 
 ## License
-PTest is licensed under the MIT License, so it's easy to integrate into any project, big or small.
+PicoTest is licensed under the MIT License, so it's easy to integrate into any project, big or small.
 
 ```
 MIT License
