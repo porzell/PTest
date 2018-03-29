@@ -50,18 +50,19 @@ Found test MyFirstTest...
 [Running all tests]
 
 [Running] MyFirstTest:
-============================================
-Assertion Failure in my_first_test.cpp (Line 12)
-     Condition not met:
-        (testString == "goodbye world!")
 
- Test "MyFirstTest" finished.
+============================================
+Assertion Failure in my_first_test.cpp (Line 14)
+     Condition not met:
+        (0 == 1)
+
+ Test 'MyFirstTest' finished. (0.601486 ms)
    1 assertions failed.
-   2 assertions run.
+   3 assertions run.
 ============================================
 
 ==================================================================
-[Test Summary]:
+[Test Summary]:                 (Total Time: 0.601486 ms)
         Tests Passed:   0
         Tests Failed:   1
         Total Tests:    1
@@ -70,8 +71,42 @@ Assertion Failure in my_first_test.cpp (Line 12)
 
 Nice, huh?
 
-PTest will automatically gather all ```P_TEST()``` tests to run, so you don't
-need to worry about it.
+## Other Features
+
+### Test Fixtures
+
+PTest can also provide a main function to run through all tests and also supports
+test fixture classes like this:
+
+```
+#define USE_PTEST_MAIN
+#include "../include/ptest.hpp"
+
+class MyTestFixtureClass : public PTest::PTestFixture {
+    protected:
+        int myVar = 3;
+    public:
+        virtual void Create() {
+            // Stuff here gets called before test case.
+        }
+        virtual void Destroy() {
+            // Stuff here gets called after test case.
+        }
+};
+
+P_TEST_F(MyTestFixtureClass, UnitTest1) {
+    P_ASSERT(myVar == 3);
+}
+
+P_TEST_F(MyTestFixtureClass, UnitTest2) {
+    P_ASSERT(myVar == 3);
+    myVar = 4;
+}
+```
+
+
+PTest will automatically gather all ```P_TEST()``` and ```P_TEST_F``` tests to
+run, so you don't need to worry about it.
 
 If you would like to run just one test you can also use:
 ```C++
@@ -79,13 +114,15 @@ return PTest::PTestRegistry::Get().RunTest("MyFirstTest");
 ```
 
 ## Planned Features
-Currently, here is the planned list of PTest features to be supported:
+Currently, the planned list of PTest features to be supported includes:
 * Descriptive assertions:
  This will allow you to add a custom text output to display on an assertion failure.
 * Gherkin-like test syntax:
  Oh yeah, that's right!  PTest will soon be supporting a Gherkin-like block syntax to allow you to bring Test-driven development to your project in one tiny header.
 * Test tags/filters
  For when you're really rather choosy about your tests...
+* Exception catch assertions:
+ This will be pretty easy to add and likely will be coming up soon.
 
 ## License
 PicoTest is licensed under the MIT License, so it's easy to integrate into any project, big or small.
