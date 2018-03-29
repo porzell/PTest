@@ -1,13 +1,13 @@
 # PTest
 ## What is PTest?
-Glad you asked!
+Glad you asked!  PTest is short for PicoTest.
 
-### PTest is a header-only, super-lightweight unit testing library.
+### PicoTest is a header-only, super-lightweight unit testing library.
 
 PTest allows you to quickly add unit tests to your project without the need for
 compiling and linking a separate testing library (like gtest).
 
-At ~230 LOC, PTest is absolutely tiny, but still can get the job done.
+At ~230 LOC, PicoTest is absolutely tiny, but still can get the job done.
 
 ## So, how do I use this thing?
 Easy!  First off you gotta make a test case.  That'll look like this:
@@ -84,13 +84,11 @@ Currently, here is the planned list of PTest features to be supported:
  This will allow you to add a custom text output to display on an assertion failure.
 * Gherkin-like test syntax:
  Oh yeah, that's right!  PTest will soon be supporting a Gherkin-like block syntax to allow you to bring Test-driven development to your project in one tiny header.
-* Expect(ations):
- For when you want your test to keep going, but want to make sure it fails in the end.
 * Test tags/filters
  For when you're really rather choosy about your tests...
 
 ## License
-PTest is licensed under the MIT License, so it's easy to integrate into any project, big or small.
+PicoTest is licensed under the MIT License, so it's easy to integrate into any project, big or small.
 
 ```
 MIT License
@@ -116,10 +114,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## Known Issues
-Due to the (really stupid) way in which ```std::unordered_map``` currently works
-under Linux, the tests get executed in the opposite order in which they were defined.
-I will be fixing this as soon as possible.
+## Compatibility
+PTest is currently set up to work on Windows (MSVC++) and Linux (G++/Clang).
 
 ## Have fun!
 Let me know if you end up using this!  I'll be working on it regularly.

@@ -1,0 +1,6 @@
+3/28/2018: Initial commit
+3/29/2018: Added Windows console support
+           Added rudimentary P_EXPECT support
+           Added test timing support
+           Fixed bug where crashes could occur if assertions are used outside of a test case
+           Various other code cleanups

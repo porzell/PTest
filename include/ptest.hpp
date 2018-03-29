@@ -5,16 +5,18 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <chrono>
 
-#define P_DEBUG_PRINT(STRING, ...) printf("%s (%u):" "STRING",__FILE__,__LINE__,__VA_ARGS__)
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
-#define P_ASSERT(...) \
-  if (!(__VA_ARGS__)) { \
-    PTest::PTestRegistry::Get().GetCurrentTest().AddAssertion(PTest::PAssertion(false, __FILE__, __LINE__, #__VA_ARGS__)); \
-    return; \
-  } else { \
-    PTest::PTestRegistry::Get().GetCurrentTest().AddAssertion(PTest::PAssertion(true, __FILE__, __LINE__, #__VA_ARGS__)); \
-  }
+#define P_ASSERT(assertion) \
+    PTest::PTestRegistry::Get().AddAssertion(PTest::PAssertion((assertion), __FILE__, __LINE__, #assertion)); \
+    if (!#assertion) return;
+
+#define P_EXPECT(assertion) \
+    PTest::PTestRegistry::Get().AddAssertion(PTest::PAssertion((#assertion), __FILE__, __LINE__, #assertion), true);
 
 #define STRINGIFY(x) #x
 
@@ -30,203 +32,256 @@
 
 namespace PTest {
 
-  const char P_COLOR_NORMAL[] = "\x1B[0m";
-  const char P_COLOR_GREEN[] = "\x1B[32m";
-  const char P_COLOR_BLUE[] = "\x1b[36m";
-  const char P_COLOR_RED[] = "\x1b[31m";
+	typedef void(*P_TEST_FUNC)(void);
 
-  /*class PTestRunner {
-    private:
+	void PrintBars(uint32_t num = 2) {
+		for (uint32_t i = 0; i < num; ++i) {
+			printf("======================");
+		}
+		putchar('\n');
+	}
+	
+	enum class PColor {
+		Normal,
+		Green,
+		Blue,
+		Red
+	};
 
-    public:
-      static RunTest(std::string testName) {
-        PTestRegistry::Get().FindTest(testName);
-      }
-  };*/
+	void SetConsoleColor(PColor color) {
+#ifdef __linux__
+		switch (color) {
+			case PColor::Red:		printf("\x1b[31m"); break;
+			case PColor::Green:	printf("\x1b[32m"); break;
+			case PColor::Blue:	printf("\x1b[36m"); break;
+			default:						printf("\x1B[0m");
+		}
+#endif
+#ifdef _WIN32
+		static HANDLE handle = 0;
+		if (!handle) {
+			handle = GetStdHandle(STD_OUTPUT_HANDLE);
+			CONSOLE_SCREEN_BUFFER_INFO csbi;
+			GetConsoleScreenBufferInfo(handle, &csbi);
+		}
+		WORD attributes;
+		switch (color) {
+			case PColor::Red: attributes = FOREGROUND_RED; break;
+			case PColor::Blue: attributes = FOREGROUND_BLUE | FOREGROUND_GREEN; break;
+			case PColor::Green: attributes = FOREGROUND_GREEN; break;
+			default: attributes = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN;
+		}
+		SetConsoleTextAttribute(handle, attributes);
+#endif
+	}
 
-  typedef void (*P_TEST_FUNC)(void);
+	class PAssertion {
+	private:
+		bool success_;
+		std::string condition_;
+		std::string file_;
+		uint32_t line_;
+		std::string text_;
+	public:
+		PAssertion(bool success, const char* file, uint32_t line, const char* condition, const char* text = nullptr) :
+			success_(success), condition_(condition), file_(file), line_(line) {
+			  if(text) {
+			    text_ = text;
+			  }
+			};
 
-  void PrintBars(uint32_t num = 2) {
-      for(int i = 0; i < num; ++i) {
-          printf("======================");
-      }
-      putchar('\n');
-  }
+		~PAssertion() = default;
 
-  class PAssertion {
-    private:
-      bool success_;
-      std::string condition_;
-      std::string file_;
-      uint32_t line_;
-    public:
-      PAssertion(bool success, const char* file, uint32_t line, const char* condition) :
-        success_(success), condition_(condition), file_(file), line_(line) {};
+		bool GetSuccess() const { return success_; }
+		const std::string& GetCondition() const { return condition_; }
+		const std::string& GetFile() const { return file_; }
+		uint32_t GetLine() const { return line_; }
+		const std::string& GetText() const { return text_; }
 
-      ~PAssertion() = default;
+		explicit operator bool() const {
+			return success_;
+		}
+	};
 
-      bool GetSuccess() const { return success_; }
-      const std::string& GetCondition() const { return condition_; }
-      const std::string& GetFile() const { return file_; }
-      uint32_t GetLine() const { return line_; }
+	class PTest {
+	private:
+		std::string name_;
+		P_TEST_FUNC func_;
+		bool run_, succeeded_;
+		std::vector<PAssertion> assertions_;
+		std::chrono::duration<double, std::milli> duration_;
+	public:
+		PTest(const char* testName, P_TEST_FUNC testFunc) :
+			name_(testName), func_(testFunc),
+			run_(false), succeeded_(false), duration_(0)
+		{};
 
-      explicit operator bool() const {
-        return success_;
-      }
-  };
+		~PTest() = default;
 
-  class PTest {
-    private:
-      std::string name_;
-      P_TEST_FUNC func_;
-      bool run_, succeeded_;
-      std::vector<PAssertion> assertions_;
+		void AddAssertion(PAssertion assertion, bool is_expect = false) {
+			assertions_.push_back(assertion);
+			if (!assertion) {
+				SetConsoleColor(PColor::Red); PrintBars();
+				if (is_expect) {
+					printf("Expectation Failure in %s (Line %u)\n", assertion.GetFile().c_str(), assertion.GetLine());
+				}
+				else {
+					printf("Assertion Failure in %s (Line %u)\n", assertion.GetFile().c_str(), assertion.GetLine());
+				}
+				printf("     Condition not met:\n\t");
+				SetConsoleColor(PColor::Normal); printf("(%s)\n\n", assertion.GetCondition().c_str());
+			}
+		}
 
-    public:
-      PTest(const char* testName, P_TEST_FUNC testFunc) :
-        name_(testName), func_(testFunc),
-        run_(false), succeeded_(false)
-        {};
+		bool HasSucceeded() const { return succeeded_; }
+		bool HasRun() const { return run_; }
+		
+		const std::string& GetName() const { return name_; }
+		std::chrono::duration<double, std::milli> GetDuration() const { return duration_; }
 
-      ~PTest() = default;
+		bool Run() {
+			SetConsoleColor(PColor::Green);
+			printf("[Running]");
+			SetConsoleColor(PColor::Normal);
+			printf(" %s:\n", name_.c_str());
 
-      void AddAssertion(PAssertion assertion) {
-        assertions_.push_back(assertion);
-        if (!assertion) {
-          printf("%s", P_COLOR_RED);
-          PrintBars();
-          printf("Assertion Failure in %s (Line %u)\n", assertion.GetFile().c_str(), assertion.GetLine());
-          printf("     Condition not met:\n\t\x1B[0m(%s)\n\n", assertion.GetCondition().c_str());
-        }
-        printf("%s", P_COLOR_NORMAL);
-      }
+			run_ = false;
+			succeeded_ = true;
+			assertions_.clear();
 
-      bool HasSucceeded() const { return succeeded_; }
-      bool HasRun() const { return run_; }
+			auto start = std::chrono::high_resolution_clock::now();
+			func_();
+			auto end = std::chrono::high_resolution_clock::now();
 
-      bool Run() {
-        printf("%s", P_COLOR_GREEN);
-        printf("[Running] ");
-        printf("%s", P_COLOR_NORMAL);
-        printf("%s:\n", name_.c_str());
+			duration_ = end - start;
 
-        run_ = false;
-        succeeded_ = true;
-        assertions_.clear();
+			size_t failedAssertionCount = 0;
 
-        func_();
+			for (PAssertion& assertion : assertions_) {
+				if (!assertion.GetSuccess()) {
+					succeeded_ = false;
+					failedAssertionCount++;
+				}
+			}
 
-        size_t failedAssertionCount = 0;
+			SetConsoleColor(PColor::Blue); printf(" Test '%s' finished. (%f ms)\n", name_.c_str(), duration_.count());
+			succeeded_ ? SetConsoleColor(PColor::Green) : SetConsoleColor(PColor::Red);
+			printf("   %zu assertions failed.\n", failedAssertionCount);
+			SetConsoleColor(PColor::Green); printf("   %zu assertions run.\n", assertions_.size());
 
-        for (PAssertion& assertion : assertions_) {
-          if (!assertion.GetSuccess()) {
-            succeeded_ = false;
-            failedAssertionCount++;
-          }
-        }
+			if (!succeeded_) {
+				SetConsoleColor(PColor::Red);
+				PrintBars();
+			}
+			SetConsoleColor(PColor::Normal);
+			return succeeded_;
+		}
+	};
 
-        printf("%s", P_COLOR_BLUE);
-        printf(" Test \"%s\" finished.\n", name_.c_str());
-        succeeded_ ? printf("%s", P_COLOR_GREEN) : printf("%s", P_COLOR_RED) ;
-        printf("   %u assertions failed.\n", failedAssertionCount);
-        printf("%s", P_COLOR_GREEN);
-        printf("   %u assertions run.\n", assertions_.size());
+	class PTestRegistry {
+		std::unordered_map<std::string, PTest> testMap_;
+		std::vector<std::unordered_map<std::string, PTest>::iterator> index_;
 
-        if (!succeeded_) {
-          printf("%s", P_COLOR_RED);
-          PrintBars();
-        }
-        printf("%s", P_COLOR_NORMAL);
-        return succeeded_;
-      }
-  };
+		PTest *currentTest_ = nullptr;
 
-  class PTestRegistry {
-    std::unordered_map<std::string, PTest> testMap_;
+	public:
+		static PTestRegistry& Get() {
+			static PTestRegistry registry;
+			return registry;
+		}
 
-    PTest *currentTest_ = nullptr;
+		void AddAssertion(PAssertion assertion, bool is_expect = false) {
+			if (currentTest_) {
+				currentTest_->AddAssertion(assertion, is_expect);
+			}
+			else {
+				SetConsoleColor(PColor::Red);
+				printf("ASSERTION \"%s\" on line %u of %s:\n\tINVALID OUTSIDE OF TEST CASE\n",
+					assertion.GetCondition().c_str(), assertion.GetLine(), assertion.GetFile().c_str());
+				SetConsoleColor(PColor::Normal);
+			}
+		}
 
-    public:
-      static PTestRegistry& Get() {
-        static PTestRegistry registry;
-        return registry;
-      }
+		void AddTest(const char* testName, P_TEST_FUNC testFunc) {
+			if (testMap_.find(testName) != testMap_.end()) {
+				SetConsoleColor(PColor::Red);
+				printf("[DUPLICATE TESTS FOUND for \"%s!\" ABORTING...]\n", testName);
+				SetConsoleColor(PColor::Normal);
+				return;
+			}
 
-      void AddTest(const char* testName, P_TEST_FUNC testFunc) {
-        if (testMap_.find(testName) != testMap_.end()) {
-          printf("%s", P_COLOR_RED);
-          printf("[DUPLICATE TESTS FOUND for \"%s!\" ABORTING...]\n", testName);
-          printf("%s", P_COLOR_NORMAL);
-          return;
-        }
+			index_.push_back(testMap_.insert(testMap_.cbegin(), { testName, PTest(testName, testFunc) }));
+		}
 
-        testMap_.insert({testName, PTest(testName, testFunc)});
-      }
+		bool RunTest(std::string testName) {
+			auto it = testMap_.find(testName);
+			if (it == testMap_.end()) {
+				SetConsoleColor(PColor::Red);
+				printf("[TEST \"%s\" NOT FOUND!]\n", testName.c_str());
+				SetConsoleColor(PColor::Normal);
+				return false;
+			}
 
-      bool RunTest(std::string testName) {
-        auto it = testMap_.find(testName);
-        if (it == testMap_.end()) {
-          printf("%s", P_COLOR_RED);
-          printf("[TEST \"%s\" NOT FOUND!]\n", testName.c_str());
-          printf("%s", P_COLOR_NORMAL);
-          return false;
-        }
+			currentTest_ = &it->second;
 
-        currentTest_ = &it->second;
+			return it->second.Run();
+		}
 
-        return it->second.Run();
-      }
+		int RunAllTests() {
+			size_t testsRunCount = 0;
+			size_t testsFailedCount = 0;
 
-      int RunAllTests() {
-        size_t testsRunCount = 0;
-        size_t testsFailedCount = 0;
+			SetConsoleColor(PColor::Green);
+			printf("\n[Running all tests]\n\n");
+			SetConsoleColor(PColor::Normal);
 
-        printf("%s", P_COLOR_GREEN);
-        printf("\n[Running all tests]\n\n");
-        printf("%s", P_COLOR_NORMAL);
+			std::chrono::duration<double, std::milli> totalDuration = std::chrono::milliseconds(0);
 
-        for (auto it = testMap_.begin(); it != testMap_.end(); it++) {
-          auto& theTest = it->second;
+			for (auto& it : index_) {
+				auto& theTest = it->second;
+				currentTest_ = &theTest;
+				if (!theTest.Run()) {
+					testsFailedCount++;
+				}
+				currentTest_ = nullptr;
+				totalDuration += theTest.GetDuration();
+				testsRunCount++;
+			}
 
-          currentTest_ = &theTest;
+			putchar('\n');
+			SetConsoleColor(PColor::Normal); PrintBars(3); printf("[Test Summary]:");
+			SetConsoleColor(PColor::Blue); printf("\t\t\t(Total Time: %f ms)\n", totalDuration.count());
+			SetConsoleColor(PColor::Green); printf("\tTests Passed:\t");
+			SetConsoleColor(PColor::Normal); printf("%zu\n", testsRunCount - testsFailedCount);
+			testsFailedCount ? SetConsoleColor(PColor::Red) : SetConsoleColor(PColor::Green);
+			printf("\tTests Failed:\t");
+			SetConsoleColor(PColor::Normal); printf("%zu\n", testsFailedCount);
+			SetConsoleColor(PColor::Blue); printf("\tTotal Tests:\t");
+			SetConsoleColor(PColor::Normal); printf("%zu\n", testsRunCount); PrintBars(3);
 
-          if (!theTest.Run()) {
-            testsFailedCount++;
-          }
+			return testsFailedCount;
+		}
 
-          testsRunCount++;
-        }
+		PTest* GetCurrentTest() { return currentTest_; }
 
-        putchar('\n');
-        printf("%s", P_COLOR_NORMAL);
-        PrintBars(3);
-        printf("[Test Summary]:\n");
-        printf("%s", P_COLOR_GREEN);
-        printf("\tTests Passed:\t%s%u\n", P_COLOR_NORMAL, testsRunCount - testsFailedCount);
-        testsFailedCount ? printf("%s", P_COLOR_RED) : printf("%s", P_COLOR_GREEN);
-        printf("\tTests Failed:\t%s%u\n", P_COLOR_NORMAL, testsFailedCount);
-        printf("%s", P_COLOR_BLUE);
-        printf("\tTotal Tests:\t%s%u\n", P_COLOR_NORMAL, testsRunCount);
-        printf("%s", P_COLOR_NORMAL);
-        PrintBars(3);
-        
-        return testsFailedCount;
-      }
+		inline size_t GetNumTests() { return testMap_.size(); }
+	};
 
-      PTest& GetCurrentTest() { return *currentTest_;}
-
-      inline size_t GetNumTests() { return testMap_.size(); }
-  };
-
-  struct PTestRegistrar {
-    PTestRegistrar(const char* testName, P_TEST_FUNC testFunc) {
-        printf("%s", P_COLOR_BLUE);
-        printf("Found test %s...\n", testName);
-        printf("%s", P_COLOR_NORMAL);
-      PTestRegistry::Get().AddTest(testName, testFunc);
-    };
-  };
-  //#define P_TEST(TEST_NAME, ...) PTestRegistry::Get().AddTest(TEST_NAME,MAKE_UNIQUE_TESTNAME)
+	struct PTestRegistrar {
+		PTestRegistrar(const char* testName, P_TEST_FUNC testFunc) {
+			SetConsoleColor(PColor::Blue);
+			printf("Found test %s...\n", testName);
+			SetConsoleColor(PColor::Normal);
+			PTestRegistry::Get().AddTest(testName, testFunc);
+		};
+	};
 }
 
-#endif// _P_TEST_H_
+#ifdef USE_PTEST_MAIN
+int main() {
+    return PTest::PTestRegistry::Get().RunAllTests();
+}
+#endif
+
+
+#endif // _P_TEST_H_
