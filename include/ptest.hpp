@@ -6,22 +6,168 @@
 #include <vector>
 #include <unordered_map>
 #include <chrono>
+#include <iostream>
+#include <typeinfo>
+#include <cxxabi.h>
+#include <type_traits>
 
 #ifdef _WIN32
 #include <Windows.h>
 #endif
 
+template<typename S, typename T>
+class is_streamable
+{
+    template<typename SS, typename TT>
+    static auto test(int)
+    -> decltype( std::declval<SS&>() << std::declval<TT>(), std::true_type() );
+
+    template<typename, typename>
+    static auto test(...) -> std::false_type;
+
+public:
+    static const bool value = decltype(test<S,T>(0))::value;
+};
+
+template<typename E>
+constexpr auto to_integral(E e) -> typename std::underlying_type<E>::type
+{
+   return static_cast<typename std::underlying_type<E>::type>(e);
+}
+
+template<typename T>
+void print_value(std::enable_if_t<std::is_enum<T>::value
+										&& !is_streamable<std::ostream, T>::value, T> t) {
+	std::cout << to_integral(t);
+}
+
+template<typename T>
+void print_value(std::enable_if_t<is_streamable<std::ostream , T>::value
+																	&& !(std::is_enum<T>::value || std::is_fundamental<T>::value), T> t) {
+	std::cout << t;
+}
+
+template<typename T>
+void print_value(std::enable_if_t<is_streamable<std::ostream, T>::value
+																&& (std::is_enum<T>::value || std::is_fundamental<T>::value), T> t) {
+	std::cout << t;
+}
+
+template<typename T>
+void print_value(T t) {
+  std::cout << "(unprintable)";
+}
+
 #define P_ASSERT(assertion) \
 	{ \
 		bool CAT(passertion, __LINE__) = (assertion); \
 	    PTest::PTestRegistry::Get().AddAssertion(PTest::PAssertion(CAT(passertion, __LINE__), __FILE__, __LINE__, #assertion)); \
-	    if(!(CAT(passertion, __LINE__))) \
+	    if(!(CAT(passertion, __LINE__))) { \
+			  PTest::PrintAssertionText(false, __FILE__, __LINE__, #assertion);\
 	    	return; \
+			}\
 	}
 
-#define P_EXPECT(assertion) \
-    PTest::PTestRegistry::Get().AddAssertion(PTest::PAssertion(!(#assertion), __FILE__, __LINE__, #assertion), true);
+#ifdef __linux__
+#define GET_TYPES(val1, val2) \
+	const char* type1 = abi::__cxa_demangle(typeid(val1).name(), 0, 0, NULL);\
+	const char* type2 = abi::__cxa_demangle(typeid(val2).name(), 0, 0, NULL);
+#endif
 
+#ifdef _WIN32
+#define GET_TYPES(val1, val2) \
+	const char* type1 = typeid(val1).name();\
+	const char* type2 = typeid(val2).name();
+#endif
+
+#define P_ASSERT_COMP(val1, val2, OPERATOR, OP_STR) \
+	{\
+		bool CAT(passertion, __LINE__) = (val1 OPERATOR val2); \
+		PTest::PTestRegistry::Get().AddAssertion(PTest::PAssertion(CAT(passertion, __LINE__), __FILE__, __LINE__, #val1 #OPERATOR #val2)); \
+		PTest::PrintAssertionText(false, __FILE__, __LINE__, #val1 " " #OPERATOR " " #val2);\
+		if (!(CAT(passertion, __LINE__))) { \
+			GET_TYPES(val1, val2)\
+			SetConsoleColor(PTest::PColor::LightRed);\
+			printf("   -------------------------\n");\
+			SetConsoleColor(PTest::PColor::Red);\
+			printf("   | %s is not %s %s.\n", #val1, OP_STR, #val2);\
+			SetConsoleColor(PTest::PColor::Yellow); printf("   |   Expression: ");\
+			SetConsoleColor(PTest::PColor::Normal); printf("%s ", #val1);\
+			SetConsoleColor(PTest::PColor::Yellow); printf(" vs. ");\
+			SetConsoleColor(PTest::PColor::Normal); printf("%s\n", #val2);\
+			SetConsoleColor(PTest::PColor::Yellow); printf("   |   Type: ");\
+			SetConsoleColor(PTest::PColor::Normal); printf("%s", type1);\
+			SetConsoleColor(PTest::PColor::Yellow); if(std::is_enum<decltype(val1)>::value) printf(" (Enum)");\
+			SetConsoleColor(PTest::PColor::Yellow); printf(" vs. ");\
+			SetConsoleColor(PTest::PColor::Red); printf("%s", type2);\
+			SetConsoleColor(PTest::PColor::Yellow); if(std::is_enum<decltype(val2)>::value) printf(" (Enum)");\
+			SetConsoleColor(PTest::PColor::Yellow); printf("\n   |   Value: ");\
+			SetConsoleColor(PTest::PColor::Normal); print_value<decltype(val1)>(val1);\
+			SetConsoleColor(PTest::PColor::Yellow); printf(" vs. ");\
+			SetConsoleColor(PTest::PColor::Red); print_value<decltype(val2)>(val2);\
+			SetConsoleColor(PTest::PColor::LightRed);\
+			printf("\n   -------------------------\n\n");\
+			SetConsoleColor(PTest::PColor::Normal);\
+			return; \
+		}\
+	}
+
+#define P_EXPECT_COMP(val1, val2, OPERATOR, OP_STR) \
+	{\
+		bool CAT(passertion, __LINE__) = (val1 OPERATOR val2); \
+		PTest::PTestRegistry::Get().AddAssertion(PTest::PAssertion(CAT(passertion, __LINE__), __FILE__, __LINE__, #val1 #OPERATOR #val2)); \
+		PTest::PrintAssertionText(true, __FILE__, __LINE__, #val1 " " #OPERATOR " " #val2);\
+		if (!(CAT(passertion, __LINE__))) { \
+			GET_TYPES(val1, val2)\
+			SetConsoleColor(PTest::PColor::LightRed);\
+			printf("   -------------------------\n");\
+			SetConsoleColor(PTest::PColor::Red);\
+			printf("   | %s is not %s %s.\n", #val1, OP_STR, #val2);\
+			SetConsoleColor(PTest::PColor::Yellow); printf("   |   Expression: ");\
+			SetConsoleColor(PTest::PColor::Normal); printf("%s ", #val1);\
+			SetConsoleColor(PTest::PColor::Yellow); printf(" vs. ");\
+			SetConsoleColor(PTest::PColor::Normal); printf("%s\n", #val2);\
+			SetConsoleColor(PTest::PColor::Yellow); printf("   |   Type: ");\
+			SetConsoleColor(PTest::PColor::Normal); printf("%s", type1);\
+			SetConsoleColor(PTest::PColor::Yellow); if(std::is_enum<decltype(val1)>::value) printf(" (Enum)");\
+			SetConsoleColor(PTest::PColor::Yellow); printf(" vs. ");\
+			SetConsoleColor(PTest::PColor::Red); printf("%s", type2);\
+			SetConsoleColor(PTest::PColor::Yellow); if(std::is_enum<decltype(val2)>::value) printf(" (Enum)");\
+			SetConsoleColor(PTest::PColor::Yellow); printf("\n   |   Value: ");\
+			SetConsoleColor(PTest::PColor::Normal); print_value<decltype(val1)>(val1);\
+			SetConsoleColor(PTest::PColor::Yellow); printf(" vs. ");\
+			SetConsoleColor(PTest::PColor::Red); print_value<decltype(val2)>(val2);\
+			SetConsoleColor(PTest::PColor::LightRed);\
+			printf("\n   -------------------------\n\n");\
+			SetConsoleColor(PTest::PColor::Normal);\
+		}\
+	}
+
+const static char E_STR[] = "equal to";
+const static char NE_STR[] = "unequal to";
+const static char GT_STR[] = "greater than";
+const static char GE_STR[] = "greater than or equal to";
+const static char LT_STR[] = "less than";
+const static char LE_STR[] = "less than or equal to";
+
+#define P_ASSERT_EQ(val1, val2) P_ASSERT_COMP(val1, val2, ==, E_STR)
+#define P_ASSERT_NE(val1, val2) P_ASSERT_COMP(val1, val2, !=, NE_STR)
+#define P_ASSERT_GT(val1, val2) P_ASSERT_COMP(val1, val2, >, GT_STR)
+#define P_ASSERT_GE(val1, val2) P_ASSERT_COMP(val1, val2, >=, GE_STR)
+#define P_ASSERT_LT(val1, val2) P_ASSERT_COMP(val1, val2, <, LT_STR)
+#define P_ASSERT_LE(val1, val2) P_ASSERT_COMP(val1, val2, <=, LE_STR)
+
+#define P_EXPECT_EQ(val1, val2) P_EXPECT_COMP(val1, val2, ==, E_STR)
+#define P_EXPECT_NE(val1, val2) P_EXPECT_COMP(val1, val2, !=, NE_STR)
+#define P_EXPECT_GT(val1, val2) P_EXPECT_COMP(val1, val2, >, GT_STR)
+#define P_EXPECT_GE(val1, val2) P_EXPECT_COMP(val1, val2, >=, GE_STR)
+#define P_EXPECT_LT(val1, val2) P_EXPECT_COMP(val1, val2, <, LT_STR)
+#define P_EXPECT_LE(val1, val2) P_EXPECT_COMP(val1, val2, <=, LE_STR)
+
+#define P_EXPECT(assertion) \
+    PTest::PTestRegistry::Get().AddAssertion(PTest::PAssertion(!(#assertion), __FILE__, __LINE__, #assertion), true); \
+		PTest::PrintAssertionText(true, __FILE__, __LINE__, #assertion);
+		
 #define STRINGIFY(x) #x
 
 #define CAT_HELPER(x, y) x##y
@@ -31,20 +177,21 @@
 
 #define P_TEST(TEST_NAME) \
     static void MAKE_UNIQUE_TESTNAME(TEST_NAME)(); \
-    PTest::PTestRegistrar MAKE_UNIQUE_TESTNAME(TEST_NAME##reg)(STRINGIFY(TEST_NAME), MAKE_UNIQUE_TESTNAME(TEST_NAME)); \
+    PTest::PTestRegistrar MAKE_UNIQUE_TESTNAME(TEST_NAME##Registrar)(STRINGIFY(TEST_NAME), MAKE_UNIQUE_TESTNAME(TEST_NAME)); \
     static void MAKE_UNIQUE_TESTNAME(TEST_NAME)()
 
 #define P_TEST_F(TEST_FIXTURE, TEST_NAME) \
-	class MAKE_UNIQUE_TESTNAME(TEST_NAME##clas) : public TEST_FIXTURE { \
+	class MAKE_UNIQUE_TESTNAME(TEST_NAME##Class) : public TEST_FIXTURE { \
 		virtual void Test(); \
 	}; \
-	PTest::PTestRegistrar MAKE_UNIQUE_TESTNAME(TEST_NAME##reg)(STRINGIFY(TEST_NAME), STRINGIFY(TEST_FIXTURE), new MAKE_UNIQUE_TESTNAME(TEST_NAME##clas)()); \
-	void MAKE_UNIQUE_TESTNAME(TEST_NAME##clas)::Test()
+	PTest::PTestRegistrar MAKE_UNIQUE_TESTNAME(TEST_NAME##Registrar)(STRINGIFY(TEST_NAME), STRINGIFY(TEST_FIXTURE), new MAKE_UNIQUE_TESTNAME(TEST_NAME##Class)()); \
+	void MAKE_UNIQUE_TESTNAME(TEST_NAME##Class)::Test()
 
 namespace PTest {
 
 	class PTestFixture {
 	public:
+		virtual ~PTestFixture() {};
 		virtual void Create() {};
 		virtual void Destroy() {};
 		virtual void Test() = 0;
@@ -63,16 +210,22 @@ namespace PTest {
 		Normal,
 		Green,
 		Blue,
-		Red
+		Red,
+		LightRed,
+		Yellow,
+		Cyan
 	};
 
 	void SetConsoleColor(PColor color) {
 #ifdef __linux__
 		switch (color) {
-		case PColor::Red:		printf("\x1b[31m"); break;
-		case PColor::Green:	printf("\x1b[32m"); break;
-		case PColor::Blue:	printf("\x1b[36m"); break;
-		default:						printf("\x1B[0m");
+		case PColor::Red:		printf("\033[0;91m"); break;
+		case PColor::LightRed:	printf("\033[0;31m"); break;
+		case PColor::Green:		printf("\033[0;32m"); break;
+		case PColor::Yellow:	printf("\033[0;33m"); break;
+		case PColor::Cyan:		printf("\033[0;36m"); break;
+		case PColor::Blue:		printf("\033[0;34m"); break;
+		default:				printf("\033[0;37m");
 		}
 #endif
 #ifdef _WIN32
@@ -85,12 +238,24 @@ namespace PTest {
 		WORD attributes;
 		switch (color) {
 		case PColor::Red: attributes = FOREGROUND_RED; break;
-		case PColor::Blue: attributes = FOREGROUND_BLUE | FOREGROUND_GREEN; break;
+		case PColor::LightRed: attributes = FOREGROUND_RED | FOREGROUND_INTENSITY; break;
 		case PColor::Green: attributes = FOREGROUND_GREEN; break;
+		case PColor::Yellow: attributes = FOREGROUND_GREEN | FOREGROUND_RED; break;
+		case PColor::Cyan: attributes = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_INTENSITY; break;
+		case PColor::Blue: attributes = FOREGROUND_BLUE | FOREGROUND_GREEN; break;
+		
 		default: attributes = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN;
 		}
 		SetConsoleTextAttribute(handle, attributes);
 #endif
+	}
+
+	static void PrintAssertionText(bool is_expectation, const char *filename, uint32_t line, const char *assertion) {
+		SetConsoleColor(PColor::Red); putchar('\n'); PrintBars();
+		printf("%s Failure in %s (Line %u)\n", is_expectation ? "Expectation" : "Assertion",
+																					filename, line);
+		printf("     Condition not met:\n\t");
+		SetConsoleColor(PColor::Normal); printf("%s\n\n", assertion);
 	}
 
 	class PAssertion {
@@ -147,7 +312,7 @@ namespace PTest {
 
 		void AddAssertion(PAssertion assertion, bool is_expect = false) {
 			assertions_.push_back(assertion);
-			if (!assertion) {
+			/*if (!assertion) {
 				SetConsoleColor(PColor::Red); putchar('\n'); PrintBars();
 				if (is_expect) {
 					printf("Expectation Failure in %s (Line %u)\n", assertion.GetFile().c_str(), assertion.GetLine());
@@ -157,7 +322,7 @@ namespace PTest {
 				}
 				printf("     Condition not met:\n\t");
 				SetConsoleColor(PColor::Normal); printf("(%s)\n\n", assertion.GetCondition().c_str());
-			}
+			}*/
 		}
 
 		bool HasSucceeded() const { return succeeded_; }
@@ -167,7 +332,7 @@ namespace PTest {
 		const std::string& GetName() const { return name_; }
 		const std::string& GetFixtureName() const { return fixtureName_; }
 		std::chrono::duration<double, std::milli> GetDuration() const { return duration_; }
-		
+
 		PTestFixture* GetFixture() const { return fixture_; }
 
 		bool Run() {
@@ -232,13 +397,14 @@ namespace PTest {
 			static PTestRegistry registry;
 			return registry;
 		}
-		
+
 		~PTestRegistry() {
 			// Free all test fixtures
 			for (auto& it : index_) {
 				auto& ptest = it->second;
 				if(ptest.HasFixture()) {
-					delete(ptest.GetFixture());
+					PTestFixture *fixture = ptest.GetFixture();
+					delete fixture;
 				}
 			}
 		}

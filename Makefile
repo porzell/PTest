@@ -7,5 +7,5 @@ all: $(EXAMPLES_EXECUTABLES)
 clean :
 	-rm -f $(EXAMPLES_EXECUTABLES)
 %: examples/%.cpp
-	g++ -std=c++11 $< -o $@
+	g++-5 -std=c++14 $< -o $@
 
